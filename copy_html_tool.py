@@ -21,7 +21,7 @@ def loading_animation():
 
 def display_header():
     print("\033[1;32m╔═════════════════════════════════════╗")
-    print("║     HTML + CSS COPY TOOL v2.0      ║")
+    print("║     HTML + CSS COPY TOOL v2.1      ║")
     print("╚═════════════════════════════════════╝")
     print("\033[0;91m         DEVELOPED BY OLD HACKER\033[0m\n")
 
@@ -47,28 +47,41 @@ def copy_html_and_css():
 
             soup = BeautifulSoup(res.text, 'html.parser')
 
-            # Save main HTML
+            # Save HTML
             html_path = os.path.join(folder_path, "index.html")
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(res.text)
-
             print("✅ HTML saved as index.html")
 
-            # Extract and download CSS files
+            # Collect CSS links
             css_links = soup.find_all("link", rel="stylesheet")
-            css_count = 0
-            for link in css_links:
-                css_url = link.get("href")
-                if not css_url:
-                    continue
-                full_url = urljoin(url, css_url)
-                css_data = requests.get(full_url).text
-                css_file_name = f"style_{css_count}.css"
-                with open(os.path.join(folder_path, css_file_name), "w", encoding="utf-8") as css_file:
-                    css_file.write(css_data)
-                    css_count += 1
+            css_files = [urljoin(url, link.get("href")) for link in css_links if link.get("href")]
 
-            print(f"✅ {css_count} CSS files downloaded")
+            if not css_files:
+                print("⚠️ No CSS files found.")
+            else:
+                print("\n📦 Downloading all CSS files...\n")
+                total_files = len(css_files)
+                downloaded_kb = 0
+
+                for i, css_url in enumerate(css_files):
+                    try:
+                        r = requests.get(css_url)
+                        r.raise_for_status()
+                        css_file_name = f"style_{i}.css"
+                        path = os.path.join(folder_path, css_file_name)
+                        with open(path, "wb") as f:
+                            f.write(r.content)
+                            downloaded_kb += len(r.content) // 1024
+
+                        percent = int(((i + 1) / total_files) * 100)
+                        bar = "█" * (percent // 5) + '-' * (20 - (percent // 5))
+                        print(f"\r⏳ Downloading CSS: [{bar}] {percent}% ({downloaded_kb} KB)", end='', flush=True)
+                    except Exception as e:
+                        print(f"\n❌ Failed to download CSS: {css_url}\nError: {e}")
+
+                print("\n✅ All CSS files downloaded!")
+
             print("📁 Files saved in DCIM/copied_site folder")
 
         except Exception as e:
